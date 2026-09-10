@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparing API Architectures — Group 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EFF1F4;
+  --surface:#FFFFFF;
+  --ink:#16202B;
+  --ink-2:#3D4B59;
+  --muted:#6B7B8A;
+  --rule:#D8DFE6;
+  --rule-soft:#E8EDF1;
+  --soap:#6B5B95;
+  --rest:#0B62C4;
+  --graphql:#B5197A;
+  --grpc:#12757F;
+  --ok:#1F7A46;
+  --warn:#B4531A;
+  --sans:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+#viewport{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+#stage{
+  width:1280px;height:720px;position:relative;flex:none;
+  transform:scale(var(--s,1));transform-origin:center center;
+  background:var(--surface);
+  box-shadow:0 18px 50px rgba(22,32,43,.18);
+}
+.slide{
+  position:absolute;inset:0;padding:52px 64px 56px;
+  display:none;flex-direction:column;
+  background:var(--surface);
+}
+.slide.is-active{display:flex}
+.slide.pad-tight{padding:40px 48px 46px}
+
+/* ---------- shared type ---------- */
+h1{font-size:60px;line-height:1.04;margin:0;font-weight:600;letter-spacing:-.02em}
+h2{font-size:34px;line-height:1.15;margin:0 0 6px;font-weight:600;letter-spacing:-.015em}
+.kicker{font-family:var(--mono);font-size:13px;color:var(--muted);margin:0 0 14px;letter-spacing:.02em}
+.lede{font-size:17px;line-height:1.5;color:var(--ink-2);max-width:74ch;margin:0}
+p{margin:0 0 10px}
+.hr{height:1px;background:var(--rule);border:0;margin:14px 0 18px}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px}
+.small{font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.note{font-size:13px;line-height:1.5;color:var(--muted);border-left:2px solid var(--rule);padding-left:12px}
+strong{font-weight:600}
+code,.mono{font-family:var(--mono)}
+
+/* ---------- footer ---------- */
+.foot{
+  position:absolute;left:64px;right:64px;bottom:22px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  border-top:1px solid var(--rule-soft);padding-top:8px;
+}
+.slide.pad-tight .foot{left:48px;right:48px}
+
+/* ---------- title slide ---------- */
+.title-slide{justify-content:center;background:var(--surface)}
+.tracks{margin:30px 0 34px;display:flex;flex-direction:column;gap:11px;max-width:760px}
+.track{display:flex;align-items:center;gap:16px}
+.track .nm{font-family:var(--mono);font-size:15px;font-weight:500;width:86px;flex:none}
+.track .bar{height:7px;flex:1;border-radius:0;transform-origin:left center;animation:draw .7s cubic-bezier(.22,.7,.3,1) both}
+.track:nth-child(1) .bar{animation-delay:.05s}
+.track:nth-child(2) .bar{animation-delay:.16s}
+.track:nth-child(3) .bar{animation-delay:.27s}
+.track:nth-child(4) .bar{animation-delay:.38s}
+.track .tag{font-size:13px;color:var(--muted);width:250px;flex:none}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.track .bar{animation:none}}
+.team{display:flex;gap:40px;align-items:flex-start}
+.team h3{font-size:13px;font-weight:600;margin:0 0 6px;color:var(--muted)}
+.team ul{margin:0;padding:0;list-style:none;font-size:15px;line-height:1.65}
+.team .lead::after{content:"leader";font-family:var(--mono);font-size:10.5px;color:var(--rest);margin-left:8px;
+  border:1px solid var(--rest);padding:1px 5px;vertical-align:2px}
+
+/* ---------- agenda ---------- */
+.agenda{list-style:none;margin:8px 0 0;padding:0;counter-reset:ag}
+.agenda li{
+  counter-increment:ag;display:flex;gap:18px;align-items:baseline;
+  padding:11px 0;border-bottom:1px solid var(--rule-soft);font-size:19px;
+}
+.agenda li::before{content:counter(ag,decimal-leading-zero);font-family:var(--mono);font-size:13px;color:var(--muted)}
+.agenda li span{color:var(--muted);font-size:14px;margin-left:auto}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;font-size:12.6px;line-height:1.38}
+thead th{font-size:14px;font-weight:600;font-family:var(--mono);padding-bottom:7px}
+thead th.crit{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:500}
+tbody tr{border-top:1px solid var(--rule-soft)}
+tbody tr:first-child{border-top:1px solid var(--rule)}
+td.crit{font-weight:600;color:var(--ink);font-size:12.4px;padding-left:0}
+th.crit{padding-left:0}
+.c-soap{color:var(--soap);border-bottom:3px solid var(--soap)}
+.c-rest{color:var(--rest);border-bottom:3px solid var(--rest)}
+.c-graphql{color:var(--graphql);border-bottom:3px solid var(--graphql)}
+.c-grpc{color:var(--grpc);border-bottom:3px solid var(--grpc)}
+.dim td:not(.crit){color:var(--muted)}
+td em{font-style:normal;font-family:var(--mono);font-size:11.6px;color:var(--ink-2)}
+
+/* ---------- glance cards (slide 3) ---------- */
+.glance{display:grid;grid-template-columns:repeat(4,1fr);gap:0;flex:1;min-height:0}
+.glance > div{padding:18px 20px 14px;border-left:1px solid var(--rule-soft)}
+.glance > div:first-child{border-left:0;padding-left:0}
+.glance h3{font-family:var(--mono);font-size:20px;margin:0 0 4px;font-weight:600}
+.glance .born{font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-bottom:12px}
+.glance p{font-size:14px;line-height:1.5;color:var(--ink-2)}
+.glance .rule{height:4px;width:44px;margin-bottom:14px}
+
+/* ---------- pros/cons ---------- */
+.prosgrid{display:flex;flex-direction:column;flex:1;min-height:0}
+.prosrow{display:grid;grid-template-columns:118px 1fr 1fr;gap:22px;padding:13px 0;border-top:1px solid var(--rule-soft);flex:1}
+.prosrow:first-child{border-top:1px solid var(--rule)}
+.prosrow h3{font-family:var(--mono);font-size:17px;margin:0;font-weight:600}
+.prosrow ul{margin:0;padding-left:16px;font-size:13px;line-height:1.5;color:var(--ink-2)}
+.prosrow li{margin-bottom:3px}
+.colhead{display:grid;grid-template-columns:118px 1fr 1fr;gap:22px;font-size:12px;color:var(--muted);padding-bottom:4px}
+
+/* ---------- reasons ---------- */
+.reasons{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px 32px}
+.reasons li{font-size:14px;line-height:1.48;color:var(--ink-2);border-left:2px solid var(--rest);padding-left:12px}
+.reasons b{color:var(--ink);font-weight:600}
+.decision{
+  border:1px solid var(--rest);border-left-width:5px;padding:14px 18px;
+  font-size:19px;font-weight:500;color:var(--ink);
+}
+.decision code{font-family:var(--mono);font-size:18px;color:var(--rest)}
+.why-not{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;font-size:12.8px;line-height:1.45;color:var(--ink-2)}
+.why-not h4{margin:0 0 3px;font-family:var(--mono);font-size:13px;font-weight:600}
+
+/* ---------- endpoints ---------- */
+table.eps td{font-size:13px;padding:6.5px 10px}
+table.eps td:first-child{padding-left:0;width:96px}
+.verb{font-family:var(--mono);font-weight:600;font-size:12px;padding:2px 7px;color:#fff;display:inline-block;min-width:62px;text-align:center}
+.v-get{background:#0B62C4}.v-post{background:#1F7A46}.v-patch{background:#B4531A}.v-del{background:#A32020}
+table.eps td.path{font-family:var(--mono);font-size:12.6px;color:var(--ink)}
+
+/* ---------- code ---------- */
+.codecols{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;flex:1;min-height:0}
+.codecol{display:flex;flex-direction:column;gap:7px;min-height:0}
+.codecol h3{font-size:13px;margin:0;font-weight:600}
+.codecol h3 span{color:var(--muted);font-weight:400}
+pre{
+  margin:0;background:#F3F6F9;border-left:2px solid var(--rule);
+  padding:9px 11px;font-family:var(--mono);font-size:10.4px;line-height:1.45;
+  color:var(--ink-2);white-space:pre;overflow:hidden;
+}
+pre.wide{font-size:11.6px;line-height:1.5}
+pre b{color:var(--ink);font-weight:600}
+pre .cm{color:var(--muted)}
+pre .st{color:var(--ok);font-weight:600}
+pre .er{color:#A32020;font-weight:600}
+.schemawrap{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;flex:1;min-height:0}
+
+/* ---------- diagrams ---------- */
+.diagrams{display:grid;grid-template-columns:1fr 1fr;gap:26px;flex:1;min-height:0}
+.diagram{display:flex;flex-direction:column;gap:8px;min-height:0}
+.diagram h3{font-size:14px;margin:0;font-weight:600}
+.diagram svg{width:100%;height:auto;flex:1;min-height:0}
+svg text{font-family:var(--sans);fill:var(--ink)}
+svg .lbl{font-size:10.5px;fill:var(--ink)}
+svg .sub{font-size:9px;fill:var(--muted)}
+svg .mono{font-family:var(--mono);font-size:9.5px;fill:var(--ink-2)}
+svg .zone{font-size:9.5px;fill:var(--muted)}
+svg .box{fill:#fff;stroke:var(--rule);stroke-width:1}
+svg .box-rest{fill:#F2F7FE;stroke:var(--rest);stroke-width:1.3}
+svg .flow{stroke:var(--ink-2);stroke-width:1.2;fill:none;marker-end:url(#ar)}
+svg .flow-back{stroke:var(--muted);stroke-width:1.1;fill:none;stroke-dasharray:4 3;marker-end:url(#ar2)}
+svg .life{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
+
+/* ---------- summary ---------- */
+.summary{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.summary li{font-size:16px;line-height:1.5;color:var(--ink-2);padding-left:16px;border-left:2px solid var(--rule)}
+.summary li.key{border-left-color:var(--rest);color:var(--ink)}
+.refs{margin:0;padding:0;list-style:none;counter-reset:r;column-count:2;column-gap:40px}
+.refs li{counter-increment:r;font-size:12.8px;line-height:1.45;margin-bottom:11px;break-inside:avoid;padding-left:26px;position:relative}
+.refs li::before{content:counter(r);position:absolute;left:0;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.refs .url{font-family:var(--mono);font-size:11.2px;color:var(--rest);word-break:break-all}
+
+/* ---------- appendix ---------- */
+.appx{display:grid;grid-template-columns:1fr 1fr;gap:26px;flex:1;min-height:0}
+
+/* ---------- HUD ---------- */
+#hud{
+  position:fixed;bottom:14px;right:18px;display:flex;gap:6px;align-items:center;z-index:10;
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+}
+#hud button{
+  font:inherit;background:var(--surface);border:1px solid var(--rule);color:var(--ink-2);
+  width:28px;height:26px;cursor:pointer;line-height:1;
+}
+#hud button:hover{background:#E7EDF3}
+#hud button:focus-visible,#stage :focus-visible{outline:2px solid var(--rest);outline-offset:2px}
+#counter{padding:0 8px}
+
+@media print{
+  @page{size:1280px 720px;margin:0}
+  body,#viewport{display:block;height:auto;overflow:visible;background:#fff}
+  #stage{transform:none!important;box-shadow:none;width:1280px;height:auto}
+  .slide{display:flex!important;position:relative;page-break-after:always;height:720px}
+  #hud{display:none}
+}
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="stage">
+
+<!-- ================= 1 TITLE ================= -->
+<section class="slide title-slide is-active">
+  <p class="kicker">SWD392 · Assignment · Group 1</p>
+  <h1>Comparing API<br>Architectures</h1>
+  <div class="tracks">
+    <div class="track"><span class="nm">SOAP</span><span class="bar" style="background:var(--soap)"></span><span class="tag">XML messaging protocol</span></div>
+    <div class="track"><span class="nm">REST</span><span class="bar" style="background:var(--rest)"></span><span class="tag">Resource-oriented HTTP style</span></div>
+    <div class="track"><span class="nm">GraphQL</span><span class="bar" style="background:var(--graphql)"></span><span class="tag">Typed query language</span></div>
+    <div class="track"><span class="nm">gRPC</span><span class="bar" style="background:var(--grpc)"></span><span class="tag">Binary RPC over HTTP/2</span></div>
+  </div>
+  <div class="team">
+    <div>
+      <h3>Members</h3>
+      <ul>
+        <li class="lead">Nguyễn Mai Hào Thiên</li>
+        <li>Nguyễn Ngọc Bảo Cường</li>
+        <li>Ngô Chí Nam</li>
+      </ul>
+    </div>
+    <div>
+      <h3>&nbsp;</h3>
+      <ul>
+        <li>Đoàn Nguyễn Trung Nguyên</li>
+        <li>Ngô Tấn Thành</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Case study</h3>
+      <ul><li>Student Management System</li></ul>
+    </div>
+  </div>
+  <div class="foot"><span>Group 1 — [Class]</span><span>[Date]</span></div>
+</section>
+
+<!-- ================= 2 AGENDA ================= -->
+<section class="slide">
+  <p class="kicker">Contents</p>
+  <h2>What we cover</h2>
+  <hr class="hr">
+  <div class="body">
+    <ol class="agenda">
+      <li>The four architectures at a glance <span>slide 3</span></li>
+      <li>Comparison table — technical characteristics <span>slide 4</span></li>
+      <li>Comparison table — practical characteristics <span>slide 5</span></li>
+      <li>Advantages and limitations <span>slide 6</span></li>
+      <li>The system and the architecture we chose <span>slides 7–8</span></li>
+      <li>API demonstration: endpoints, messages, schema <span>slides 9–11</span></li>
+      <li>Architecture and communication diagrams <span>slide 12</span></li>
+      <li>Summary and references <span>slides 13–14</span></li>
+    </ol>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>02 / 14</span></div>
+</section>
+
+<!-- ================= 3 GLANCE ================= -->
+<section class="slide">
+  <p class="kicker">Definitions</p>
+  <h2>Four different kinds of answer</h2>
+  <p class="lede">Only two of these are directly comparable. SOAP is a protocol and gRPC is a framework — both prescribe how you must talk. REST is a set of architectural constraints, and GraphQL is a query language that runs on top of one endpoint.</p>
+  <hr class="hr">
+  <div class="body">
+    <div class="glance">
+      <div>
+        <div class="rule" style="background:var(--soap)"></div>
+        <h3 style="color:var(--soap)">SOAP</h3>
+        <div class="born">W3C · 1.2 since 2003</div>
+        <p>A strict XML messaging protocol. The contract lives in a WSDL file, and the WS-* stack adds security, reliable delivery and transactions.</p>
+      </div>
+      <div>
+        <div class="rule" style="background:var(--rest)"></div>
+        <h3 style="color:var(--rest)">REST</h3>
+        <div class="born">Fielding · 2000</div>
+        <p>An architectural style, not a product. Data becomes resources with URIs; HTTP verbs and status codes carry the operation and the outcome.</p>
+      </div>
+      <div>
+        <div class="rule" style="background:var(--graphql)"></div>
+        <h3 style="color:var(--graphql)">GraphQL</h3>
+        <div class="born">Meta · open since 2015</div>
+        <p>A typed schema plus a runtime. The client sends a query describing exactly the fields it wants, and gets back that shape and nothing more.</p>
+      </div>
+      <div>
+        <div class="rule" style="background:var(--grpc)"></div>
+        <h3 style="color:var(--grpc)">gRPC</h3>
+        <div class="born">Google · 2015</div>
+        <p>Remote procedure calls over HTTP/2. Messages are binary Protocol Buffers, and both client and server stubs are generated from a .proto file.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>03 / 14</span></div>
+</section>
+
+<!-- ================= 4 TABLE 1 ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Comparison · 1 of 2</p>
+  <h2>Technical characteristics</h2>
+  <hr class="hr">
+  <div class="body">
+    <table>
+      <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
+      <thead>
+        <tr>
+          <th class="crit">Criterion</th>
+          <th class="c-soap">SOAP</th>
+          <th class="c-rest">REST</th>
+          <th class="c-graphql">GraphQL</th>
+          <th class="c-grpc">gRPC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="crit">Communication protocol</td>
+          <td>Transport-agnostic: HTTP, SMTP, JMS, raw TCP</td>
+          <td>HTTP/1.1 and HTTP/2</td>
+          <td>HTTP, normally a single <em>POST /graphql</em>; WebSocket for subscriptions</td>
+          <td>HTTP/2 only, TLS by default</td>
+        </tr>
+        <tr>
+          <td class="crit">Data format</td>
+          <td>XML only, wrapped in a SOAP Envelope</td>
+          <td>Usually JSON; XML, CSV or binary also possible</td>
+          <td>Query in GraphQL syntax, response in JSON</td>
+          <td>Protocol Buffers, a compact binary encoding</td>
+        </tr>
+        <tr>
+          <td class="crit">Interface style</td>
+          <td>Operation-oriented, described in WSDL</td>
+          <td>Resource-oriented: URIs plus <em>GET POST PUT PATCH DELETE</em></td>
+          <td>Schema-driven: <em>Query</em>, <em>Mutation</em>, <em>Subscription</em></td>
+          <td>Service and method oriented, declared in a <em>.proto</em> IDL</td>
+        </tr>
+        <tr>
+          <td class="crit">Contract and typing</td>
+          <td>Strong and mandatory, WSDL with XML Schema</td>
+          <td>Optional and by convention, usually OpenAPI</td>
+          <td>Strong and mandatory, typed schema with introspection</td>
+          <td>Strong and mandatory, stubs generated from the IDL</td>
+        </tr>
+        <tr>
+          <td class="crit">Message overhead</td>
+          <td>High — envelope, namespaces and headers on every call</td>
+          <td>Moderate — readable JSON, no envelope</td>
+          <td>Moderate — JSON, but only the requested fields travel</td>
+          <td>Low — binary fields identified by number, not name</td>
+        </tr>
+        <tr>
+          <td class="crit">Error model</td>
+          <td>Built in: <em>&lt;soap:Fault&gt;</em> with code, reason and detail</td>
+          <td>HTTP status codes, plus <em>application/problem+json</em></td>
+          <td>Always <em>200 OK</em> with an <em>errors</em> array in the body</td>
+          <td>Status codes with metadata trailers</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>04 / 14</span></div>
+</section>
+
+<!-- ================= 5 TABLE 2 ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Comparison · 2 of 2</p>
+  <h2>Practical characteristics</h2>
+  <hr class="hr">
+  <div class="body">
+    <table>
+      <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
+      <thead>
+        <tr>
+          <th class="crit">Criterion</th>
+          <th class="c-soap">SOAP</th>
+          <th class="c-rest">REST</th>
+          <th class="c-graphql">GraphQL</th>
+          <th class="c-grpc">gRPC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="crit">Performance</td>
+          <td>Lowest — XML parsing and envelope overhead</td>
+          <td>Good — small JSON payloads, helped by HTTP caching</td>
+          <td>Good — fewer round trips, but resolvers cost server time</td>
+          <td>Highest — binary payloads and HTTP/2 multiplexing</td>
+        </tr>
+        <tr>
+          <td class="crit">Flexibility</td>
+          <td>Low — contract changes usually break clients</td>
+          <td>High — new fields and endpoints are additive</td>
+          <td>Highest for clients — add and deprecate fields instead of versioning</td>
+          <td>Medium — field numbers keep compatibility, but stubs are regenerated</td>
+        </tr>
+        <tr>
+          <td class="crit">Complexity</td>
+          <td>High — WS-* stack, heavy tooling dependence</td>
+          <td>Low — plain HTTP, familiar to every developer</td>
+          <td>Medium to high — schema, resolvers, N+1 and depth limits</td>
+          <td>Medium to high — IDL, code generation, HTTP/2 infrastructure</td>
+        </tr>
+        <tr>
+          <td class="crit">Caching</td>
+          <td>Practically none, everything is a POST</td>
+          <td>Native HTTP caching with <em>ETag</em> and <em>Cache-Control</em></td>
+          <td>Not at HTTP level; needs persisted queries or client cache</td>
+          <td>Not at HTTP level; application cache only</td>
+        </tr>
+        <tr>
+          <td class="crit">Client reach</td>
+          <td>Enterprise and legacy tooling</td>
+          <td>Universal — any HTTP client, including the browser</td>
+          <td>Universal — travels over ordinary HTTP</td>
+          <td>Limited — browsers need gRPC-Web and a proxy</td>
+        </tr>
+        <tr>
+          <td class="crit">Streaming</td>
+          <td>Not native</td>
+          <td>Not native; add SSE or WebSocket separately</td>
+          <td>Subscriptions over WebSocket</td>
+          <td>Native: server, client and bidirectional streams</td>
+        </tr>
+        <tr>
+          <td class="crit">Typical use cases</td>
+          <td>Banking, payments, telecom and government integrations</td>
+          <td>Public web and mobile APIs, CRUD systems, service edges</td>
+          <td>Aggregating many sources; mobile clients with varied data needs</td>
+          <td>Service-to-service calls inside a cluster, low-latency streaming</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>05 / 14</span></div>
+</section>
+
+<!-- ================= 6 PROS / CONS ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Trade-offs</p>
+  <h2>Advantages and limitations</h2>
+  <hr class="hr">
+  <div class="body">
+    <div class="colhead"><span></span><span>What it gives you</span><span>What it costs you</span></div>
+    <div class="prosgrid">
+      <div class="prosrow">
+        <h3 style="color:var(--soap)">SOAP</h3>
+        <ul>
+          <li>Formal, machine-readable contract</li>
+          <li>Standards for message-level security, reliable delivery and distributed transactions</li>
+          <li>Independent of the transport</li>
+        </ul>
+        <ul>
+          <li>Verbose and slow to parse</li>
+          <li>Steep learning curve, heavy tooling</li>
+          <li>Poor fit for browsers and mobile networks</li>
+        </ul>
+      </div>
+      <div class="prosrow">
+        <h3 style="color:var(--rest)">REST</h3>
+        <ul>
+          <li>Simple, ubiquitous, easy to test with a browser or curl</li>
+          <li>Caching, proxies and CDNs work out of the box</li>
+          <li>Stateless, so it scales horizontally</li>
+        </ul>
+        <ul>
+          <li>No contract unless you add OpenAPI</li>
+          <li>Over-fetching and under-fetching</li>
+          <li>Related data can take several round trips</li>
+        </ul>
+      </div>
+      <div class="prosrow">
+        <h3 style="color:var(--graphql)">GraphQL</h3>
+        <ul>
+          <li>The client asks for exactly the fields it needs</li>
+          <li>One endpoint covers many resources</li>
+          <li>Typed and self-documenting through introspection</li>
+        </ul>
+        <ul>
+          <li>HTTP caching is lost</li>
+          <li>N+1 resolver problem without a data loader</li>
+          <li>Deep queries need depth and complexity limits</li>
+        </ul>
+      </div>
+      <div class="prosrow">
+        <h3 style="color:var(--grpc)">gRPC</h3>
+        <ul>
+          <li>Highest throughput and lowest latency</li>
+          <li>Type-safe generated stubs in many languages</li>
+          <li>Streaming, deadlines and cancellation are first class</li>
+        </ul>
+        <ul>
+          <li>Binary payloads are hard to read while debugging</li>
+          <li>Needs a proxy to reach a browser</li>
+          <li>Requires HTTP/2 all the way through</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>06 / 14</span></div>
+</section>
+
+<!-- ================= 7 THE SYSTEM ================= -->
+<section class="slide">
+  <p class="kicker">Case study</p>
+  <h2>Student Management System</h2>
+  <p class="lede">The right architecture depends on the clients, the shape of the data and the traffic. Here is the profile we designed against.</p>
+  <hr class="hr">
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:26px 40px">
+      <div>
+        <h3 style="font-size:15px;margin:0 0 7px">Core resources</h3>
+        <p class="small">Students, lecturers, courses, class sections, enrollments, grades, transcripts and timetables. Almost every entity is a record that is created, read, updated and listed.</p>
+      </div>
+      <div>
+        <h3 style="font-size:15px;margin:0 0 7px">Clients</h3>
+        <p class="small">A student web portal, a staff admin portal, a mobile app, and third-party campus systems such as the LMS, the library and a payment gateway.</p>
+      </div>
+      <div>
+        <h3 style="font-size:15px;margin:0 0 7px">Traffic</h3>
+        <p class="small">Read-heavy. Course catalogue, timetable and grade lookups dominate day to day, while writes arrive in short bursts during the enrollment window each semester.</p>
+      </div>
+      <div>
+        <h3 style="font-size:15px;margin:0 0 7px">What matters most</h3>
+        <p class="small">Easy integration for other campus systems, low development and maintenance cost, effective caching, standard authentication, and documentation a new developer can follow.</p>
+      </div>
+    </div>
+    <p class="note">No requirement here calls for distributed transactions, message-level signing, sub-millisecond latency or long-lived streams — which is what rules three of the four candidates out.</p>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>07 / 14</span></div>
+</section>
+
+<!-- ================= 8 CHOICE ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Decision</p>
+  <div class="decision">We chose <code>REST over HTTPS with JSON</code>, described by an OpenAPI 3.1 contract.</div>
+  <div class="body" style="margin-top:16px">
+    <ol class="reasons">
+      <li><b>The domain is already resource-oriented.</b> Students, courses and enrollments map onto URIs and HTTP verbs with almost no translation.</li>
+      <li><b>Read-heavy traffic gets caching for free.</b> Catalogues and timetables change rarely, so ETag and Cache-Control let browsers and proxies absorb most reads.</li>
+      <li><b>Every client can reach it.</b> Web, mobile and external campus systems all speak plain HTTP — no proxy and no special client library.</li>
+      <li><b>Lowest cost to build and hand over.</b> Spring Boot plus springdoc-openapi gives a documented, testable API in days.</li>
+      <li><b>Standard security and ecosystem.</b> TLS, OAuth2 and JWT, role checks per endpoint, and mature tooling: Swagger UI, Postman, gateways, rate limiting.</li>
+      <li><b>Fast enough.</b> Payloads are small records, not high-frequency streams, so REST's overhead is irrelevant at campus scale.</li>
+    </ol>
+    <hr class="hr" style="margin:6px 0 12px">
+    <div class="why-not">
+      <div><h4 style="color:var(--soap)">Why not SOAP</h4>Its transactional and message-security guarantees are not needed here, and the XML overhead hurts exactly the mobile clients we care about.</div>
+      <div><h4 style="color:var(--graphql)">Why not GraphQL</h4>Its flexibility pays off with many heterogeneous sources, and it would cost us the HTTP caching this read-heavy system depends on.</div>
+      <div><h4 style="color:var(--grpc)">Why not gRPC</h4>Excellent between internal services, but a poor public edge: browsers need a proxy and the binary format is hard to debug or integrate with.</div>
+    </div>
+    <p class="note"><b>The honest trade-off.</b> REST over-fetches and can need extra round trips. We mitigate that with sparse fieldsets, sub-resource endpoints, pagination and optional expansion. If the mobile app later needs highly variable payloads, a GraphQL gateway can sit in front of the same services.</p>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>08 / 14</span></div>
+</section>
+
+<!-- ================= 9 ENDPOINTS ================= -->
+<section class="slide">
+  <p class="kicker">Demonstration · 1 of 3</p>
+  <h2>Resource and endpoint design</h2>
+  <p class="lede">Base URL <code style="font-size:15px">https://api.university.edu/v1</code></p>
+  <hr class="hr">
+  <div class="body">
+    <table class="eps">
+      <colgroup><col style="width:96px"><col style="width:44%"><col></colgroup>
+      <tbody>
+        <tr><td><span class="verb v-get">GET</span></td><td class="path">/students?major=SE&amp;page=0&amp;size=20</td><td>List and filter students, paginated</td></tr>
+        <tr><td><span class="verb v-get">GET</span></td><td class="path">/students/{studentId}</td><td>Read one student</td></tr>
+        <tr><td><span class="verb v-post">POST</span></td><td class="path">/students</td><td>Create a student</td></tr>
+        <tr><td><span class="verb v-patch">PATCH</span></td><td class="path">/students/{studentId}</td><td>Update part of a student record</td></tr>
+        <tr><td><span class="verb v-get">GET</span></td><td class="path">/students/{studentId}/enrollments?semester=FA26</td><td>The courses a student is taking</td></tr>
+        <tr><td><span class="verb v-get">GET</span></td><td class="path">/courses/{courseId}</td><td>Course details and available sections</td></tr>
+        <tr><td><span class="verb v-post">POST</span></td><td class="path">/enrollments</td><td>Enroll a student in a class section</td></tr>
+        <tr><td><span class="verb v-del">DELETE</span></td><td class="path">/enrollments/{enrollmentId}</td><td>Drop a course</td></tr>
+        <tr><td><span class="verb v-get">GET</span></td><td class="path">/students/{studentId}/transcript</td><td>Computed transcript with GPA and credits</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Conventions: plural nouns and no verbs in the path, the HTTP status code carries the outcome, <code>application/json</code> for payloads, <code>application/problem+json</code> for errors, and a bearer token on every call.</p>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>09 / 14</span></div>
+</section>
+
+<!-- ================= 10 MESSAGES ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Demonstration · 2 of 3</p>
+  <h2>Client → Request → API → Response</h2>
+  <hr class="hr">
+  <div class="body">
+    <div class="codecols">
+      <div class="codecol">
+        <h3>A. Read a student <span>— cacheable</span></h3>
+<pre><b>GET</b> /v1/students/SE170123 HTTP/1.1
+Host: api.university.edu
+Accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1...</pre>
+<pre>HTTP/1.1 <span class="st">200 OK</span>
+Content-Type: application/json
+ETag: "a1b2c3d4"
+Cache-Control: private, max-age=60
+
+{
+  "studentId": "SE170123",
+  "fullName": "Nguyen Ngoc Bao Cuong",
+  "email": "cuongnnb@university.edu",
+  "major": "Software Engineering",
+  "enrollmentYear": 2023,
+  "status": "ACTIVE",
+  "_links": {
+    "self": "/v1/students/SE170123",
+    "enrollments":
+      "/v1/students/SE170123/enrollments"
+  }
+}</pre>
+      </div>
+      <div class="codecol">
+        <h3>B. Enroll in a section <span>— creates state</span></h3>
+<pre><b>POST</b> /v1/enrollments HTTP/1.1
+Host: api.university.edu
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1...
+Idempotency-Key: 7c9e6679-7425-40de
+
+{
+  "studentId": "SE170123",
+  "sectionId": "SWD392-FA26-01"
+}</pre>
+<pre>HTTP/1.1 <span class="st">201 Created</span>
+Location: /v1/enrollments/98213
+Content-Type: application/json
+
+{
+  "enrollmentId": 98213,
+  "studentId": "SE170123",
+  "sectionId": "SWD392-FA26-01",
+  "courseCode": "SWD392",
+  "credits": 3,
+  "status": "ENROLLED",
+  "enrolledAt": "2026-09-10T08:15:22Z"
+}</pre>
+      </div>
+      <div class="codecol">
+        <h3>C. The section is full <span>— error</span></h3>
+<pre><b>POST</b> /v1/enrollments HTTP/1.1
+Host: api.university.edu
+Content-Type: application/json
+
+{
+  "studentId": "SE170124",
+  "sectionId": "SWD392-FA26-01"
+}</pre>
+<pre>HTTP/1.1 <span class="er">409 Conflict</span>
+Content-Type: application/problem+json
+
+{
+  "type": "https://api.university.edu
+           /problems/section-full",
+  "title": "Section capacity reached",
+  "status": 409,
+  "detail": "Section SWD392-FA26-01 has
+             40 of 40 seats taken.",
+  "instance": "/v1/enrollments"
+}</pre>
+        <p class="note" style="font-size:11.5px">Same transport, same verbs, no session on the server: every request carries everything needed to serve it.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>10 / 14</span></div>
+</section>
+
+<!-- ================= 11 SCHEMA ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Demonstration · 3 of 3</p>
+  <h2>The contract: OpenAPI 3.1</h2>
+  <hr class="hr">
+  <div class="body">
+    <div class="schemawrap">
+<pre class="wide">openapi: 3.1.0
+info:
+  title: Student Management API
+  version: 1.0.0
+servers:
+  - url: https://api.university.edu/v1
+paths:
+  /students/{studentId}:
+    get:
+      summary: Get a student by ID
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Z]{2}\d{6}$' }
+      responses:
+        '200':
+          description: Student found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Student' }
+        '404': { description: Student not found }
+components:
+  schemas:
+    Student:
+      type: object
+      required: [studentId, fullName, major, status]
+      properties:
+        studentId:      { type: string, example: 'SE170123' }
+        fullName:       { type: string }
+        email:          { type: string, format: email }
+        major:          { type: string }
+        enrollmentYear: { type: integer, minimum: 2000 }
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, GRADUATED]
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }</pre>
+      <div style="display:flex;flex-direction:column;gap:16px;padding-top:4px">
+        <div>
+          <h3 style="font-size:16px;margin:0 0 6px">REST has no built-in contract</h3>
+          <p class="small">That is its main weakness next to SOAP and gRPC, where the contract is part of the protocol. OpenAPI closes the gap without giving up plain HTTP.</p>
+        </div>
+        <div>
+          <h3 style="font-size:16px;margin:0 0 6px">What the contract buys us</h3>
+          <ul class="small" style="margin:0;padding-left:17px;line-height:1.6">
+            <li>Interactive documentation through Swagger UI</li>
+            <li>Generated client SDKs for the mobile app and partner systems</li>
+            <li>Request and response validation at the gateway</li>
+            <li>A single artifact to review when the API changes</li>
+          </ul>
+        </div>
+        <p class="note">In Spring Boot the file is generated from the controllers by springdoc-openapi, so the documentation cannot drift away from the code.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>11 / 14</span></div>
+</section>
+
+<!-- ================= 12 DIAGRAMS ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Architecture</p>
+  <h2>How the pieces communicate</h2>
+  <hr class="hr">
+  <div class="body">
+    <div class="diagrams">
+      <div class="diagram">
+        <h3>Deployment view</h3>
+        <svg viewBox="0 0 560 330" role="img" aria-label="Layered architecture from clients through gateway and API to database">
+          <defs>
+            <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0 0 L8 4 L0 8 z" fill="#3D4B59"/>
+            </marker>
+            <marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0 0 L8 4 L0 8 z" fill="#6B7B8A"/>
+            </marker>
+          </defs>
+
+          <text class="zone" x="0" y="12">Clients</text>
+          <text class="zone" x="170" y="12">Edge</text>
+          <text class="zone" x="315" y="12">Application</text>
+          <text class="zone" x="470" y="12">Data</text>
+
+          <rect class="box" x="0" y="26" width="128" height="38"/>
+          <text class="lbl" x="12" y="49">Student web portal</text>
+          <rect class="box" x="0" y="72" width="128" height="38"/>
+          <text class="lbl" x="12" y="95">Staff admin portal</text>
+          <rect class="box" x="0" y="118" width="128" height="38"/>
+          <text class="lbl" x="12" y="141">Mobile app</text>
+          <rect class="box" x="0" y="164" width="128" height="38"/>
+          <text class="lbl" x="12" y="187">Campus LMS / partners</text>
+
+          <path class="flow" d="M132 114 H166"/>
+          <text class="mono" x="128" y="105">HTTPS · JSON</text>
+
+          <rect class="box" x="170" y="46" width="112" height="136"/>
+          <text class="lbl" x="182" y="70">API Gateway</text>
+          <text class="sub" x="182" y="90">TLS termination</text>
+          <text class="sub" x="182" y="106">JWT validation</text>
+          <text class="sub" x="182" y="122">Rate limiting</text>
+          <text class="sub" x="182" y="138">HTTP cache</text>
+          <text class="sub" x="182" y="154">Routing</text>
+
+          <path class="flow" d="M286 114 H314"/>
+
+          <rect class="box-rest" x="318" y="46" width="128" height="136"/>
+          <text class="lbl" x="330" y="70" style="fill:#0B62C4">REST API</text>
+          <text class="sub" x="330" y="90">Spring Boot</text>
+          <line x1="330" y1="100" x2="434" y2="100" stroke="#0B62C4" stroke-width=".6" opacity=".4"/>
+          <text class="sub" x="330" y="118">Controller layer</text>
+          <text class="sub" x="330" y="138">Service layer</text>
+          <text class="sub" x="330" y="158">Repository layer</text>
+
+          <path class="flow" d="M450 114 H480"/>
+          <text class="mono" x="446" y="105">JPA</text>
+
+          <rect class="box" x="484" y="70" width="76" height="88"/>
+          <text class="lbl" x="494" y="94">PostgreSQL</text>
+          <text class="sub" x="494" y="112">students</text>
+          <text class="sub" x="494" y="128">courses</text>
+          <text class="sub" x="494" y="144">enrollments</text>
+
+          <path class="flow-back" d="M226 186 V232"/>
+          <rect class="box" x="170" y="236" width="112" height="42"/>
+          <text class="lbl" x="182" y="256">Redis / CDN</text>
+          <text class="sub" x="182" y="271">cached reads</text>
+
+          <path class="flow-back" d="M382 186 V232"/>
+          <rect class="box" x="318" y="236" width="128" height="42"/>
+          <text class="lbl" x="330" y="256">Auth server</text>
+          <text class="sub" x="330" y="271">OAuth2 · issues JWT</text>
+
+          <text class="sub" x="0" y="300">Stateless API instances scale horizontally; the gateway and the cache absorb repeated reads.</text>
+        </svg>
+      </div>
+
+      <div class="diagram">
+        <h3>Sequence: a student enrolls in a course</h3>
+        <svg viewBox="0 0 560 330" role="img" aria-label="Sequence diagram of an enrollment request">
+          <rect class="box" x="8" y="6" width="108" height="26"/>
+          <text class="lbl" x="20" y="23">Student portal</text>
+          <rect class="box" x="156" y="6" width="100" height="26"/>
+          <text class="lbl" x="170" y="23">API Gateway</text>
+          <rect class="box-rest" x="296" y="6" width="112" height="26"/>
+          <text class="lbl" x="308" y="23">Enrollment API</text>
+          <rect class="box" x="448" y="6" width="96" height="26"/>
+          <text class="lbl" x="464" y="23">Database</text>
+
+          <line class="life" x1="62" y1="34" x2="62" y2="310"/>
+          <line class="life" x1="206" y1="34" x2="206" y2="310"/>
+          <line class="life" x1="352" y1="34" x2="352" y2="310"/>
+          <line class="life" x1="496" y1="34" x2="496" y2="310"/>
+
+          <path class="flow" d="M62 62 H202"/>
+          <text class="mono" x="64" y="56">POST /v1/enrollments</text>
+
+          <path class="flow" d="M206 96 H348"/>
+          <text class="mono" x="208" y="90">verify JWT, forward</text>
+
+          <path class="flow" d="M352 130 H492"/>
+          <text class="mono" x="354" y="124">check prerequisites</text>
+
+          <path class="flow-back" d="M496 158 H356"/>
+          <text class="mono" x="372" y="152">prerequisites met</text>
+
+          <path class="flow" d="M352 190 H492"/>
+          <text class="mono" x="354" y="184">count seats taken</text>
+
+          <path class="flow-back" d="M496 218 H356"/>
+          <text class="mono" x="404" y="212">38 of 40</text>
+
+          <path class="flow" d="M352 250 H492"/>
+          <text class="mono" x="354" y="244">INSERT enrollment</text>
+
+          <path class="flow-back" d="M352 278 H210"/>
+          <text class="mono" x="212" y="272">201 + enrollment</text>
+
+          <path class="flow-back" d="M206 306 H66"/>
+          <text class="mono" x="68" y="300">201 Created, Location header</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>12 / 14</span></div>
+</section>
+
+<!-- ================= 13 SUMMARY ================= -->
+<section class="slide">
+  <p class="kicker">Conclusion</p>
+  <h2>What we take away</h2>
+  <hr class="hr">
+  <div class="body">
+    <ul class="summary">
+      <li>The four architectures solve different problems: SOAP gives contracts and enterprise guarantees, REST gives simplicity and reach, GraphQL gives client-driven queries, gRPC gives speed and streaming.</li>
+      <li>There is no universally best option. The choice follows the clients, the shape of the data and the traffic profile.</li>
+      <li class="key">For a Student Management System, REST wins on client reach, cacheability and cost of development, and its weaknesses are cheap to mitigate.</li>
+      <li>A real system can mix them: keep REST at the public edge, add gRPC between internal services once the system is split into microservices, and put a GraphQL gateway in front if mobile clients need highly variable payloads.</li>
+    </ul>
+    <hr class="hr">
+    <p class="small" style="color:var(--muted)">Thank you — questions welcome.</p>
+  </div>
+  <div class="foot"><span>Comparing API Architectures</span><span>13 / 14</span></div>
+</section>
+
+<!-- ================= 14 REFERENCES ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Sources</p>
+  <h2>References</h2>
+  <hr class="hr">
+  <div class="body">
+    <ol class="refs">
+      <li>W3C. <i>SOAP Version 1.2 Part 1: Messaging Framework</i>, 2nd edition.<br><span class="url">https://www.w3.org/TR/soap12/</span></li>
+      <li>Fielding, R. T. <i>Architectural Styles and the Design of Network-based Software Architectures</i>, chapter 5. UC Irvine, 2000.<br><span class="url">https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm</span></li>
+      <li>IETF. <i>RFC 9110 — HTTP Semantics</i>, 2022.<br><span class="url">https://www.rfc-editor.org/rfc/rfc9110.html</span></li>
+      <li>MDN Web Docs. <i>HTTP Guides</i>.<br><span class="url">https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides</span></li>
+      <li>GraphQL Foundation. <i>Documentation and Resources</i>.<br><span class="url">https://graphql.org/resources/</span></li>
+      <li>gRPC Authors. <i>gRPC Documentation — Introduction and Core Concepts</i>.<br><span class="url">https://grpc.io/docs/</span></li>
+      <li>Google. <i>Protocol Buffers Documentation</i>.<br><span class="url">https://protobuf.dev/</span></li>
+      <li>OpenAPI Initiative. <i>OpenAPI Specification v3.1.0</i>.<br><span class="url">https://spec.openapis.org/oas/v3.1.0.html</span></li>
+      <li>IETF. <i>RFC 9457 — Problem Details for HTTP APIs</i>, 2023.<br><span class="url">https://www.rfc-editor.org/rfc/rfc9457.html</span></li>
+    </ol>
+  </div>
+  <div class="foot"><span>Group 1</span><span>14 / 14</span></div>
+</section>
+
+<!-- ================= A1 ================= -->
+<section class="slide pad-tight">
+  <p class="kicker">Appendix</p>
+  <h2>The same request in the other three</h2>
+  <p class="lede">Reading student <code>SE170123</code>, expressed in SOAP, GraphQL and gRPC.</p>
+  <hr class="hr">
+  <div class="body">
+    <div class="codecols">
+      <div class="codecol">
+        <h3 style="color:var(--soap)">SOAP message</h3>
+<pre>&lt;soap:Envelope
+  xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+  xmlns:sms="http://university.edu/sms"&gt;
+  &lt;soap:Header/&gt;
+  &lt;soap:Body&gt;
+    &lt;sms:GetStudentRequest&gt;
+      &lt;sms:StudentId&gt;SE170123&lt;/sms:StudentId&gt;
+    &lt;/sms:GetStudentRequest&gt;
+  &lt;/soap:Body&gt;
+&lt;/soap:Envelope&gt;</pre>
+        <p class="note" style="font-size:11.5px">The operation name lives in the body, not in the URL. Every call is a POST to one endpoint.</p>
+      </div>
+      <div class="codecol">
+        <h3 style="color:var(--graphql)">GraphQL query</h3>
+<pre>query StudentWithEnrollments($id: ID!) {
+  student(studentId: $id) {
+    fullName
+    major
+    enrollments(semester: "FA26") {
+      status
+      course {
+        code
+        title
+        credits
+      }
+    }
+  }
+}</pre>
+        <p class="note" style="font-size:11.5px">One round trip returns the student and the nested course data — what REST would need two or three calls for.</p>
+      </div>
+      <div class="codecol">
+        <h3 style="color:var(--grpc)">gRPC service definition</h3>
+<pre>syntax = "proto3";
+package sms.v1;
+
+service StudentService {
+  rpc GetStudent (GetStudentRequest)
+      returns (Student);
+  rpc ListEnrollments (ListEnrollmentsRequest)
+      returns (stream Enrollment);
+}
+
+message GetStudentRequest {
+  string student_id = 1;
+}
+
+message Student {
+  string student_id      = 1;
+  string full_name       = 2;
+  string major           = 3;
+  int32  enrollment_year = 4;
+}</pre>
+        <p class="note" style="font-size:11.5px">Field numbers, not names, travel on the wire — which is what keeps the payload small and the schema compatible.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Appendix</span><span>A1</span></div>
+</section>
+
+</div>
+</div>
+
+<nav id="hud">
+  <span id="counter">1 / 15</span>
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <button id="next" aria-label="Next slide">›</button>
+</nav>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0, counter = document.getElementById('counter');
+
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle('is-active', k === i); });
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    location.hash = 'slide-' + (i + 1);
+  }
+  function fit(){
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720) * 0.965;
+    document.getElementById('stage').style.setProperty('--s', s);
+  }
+
+  document.getElementById('next').addEventListener('click', function(){ show(i + 1); });
+  document.getElementById('prev').addEventListener('click', function(){ show(i - 1); });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { show(i + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(slides.length - 1); }
+  });
+
+  document.getElementById('viewport').addEventListener('click', function(e){
+    if (e.target.closest('#hud')) return;
+    show(e.clientX < window.innerWidth / 2 ? i - 1 : i + 1);
+  });
+
+  window.addEventListener('resize', fit);
+  fit();
+
+  var m = /slide-(\d+)/.exec(location.hash);
+  show(m ? parseInt(m[1], 10) - 1 : 0);
+})();
+</script>
+</body>
+</html>
